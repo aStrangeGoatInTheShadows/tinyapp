@@ -16,5 +16,8 @@
   "bugs": {
     "url": "https://github.com/aStrangeGoatInTheShadows/tinyapp/issues"
   },
-  "homepage": "https://github.com/aStrangeGoatInTheShadows/tinyapp#readme"
+  "homepage": "https://github.com/aStrangeGoatInTheShadows/tinyapp#readme",
+  "dependencies": {
+    "express": "^4.17.1"
+  }
 }
