@@ -1,6 +1,5 @@
 const bodyParser = require("body-parser");
 const express = require("express");
-const parseJson = require('parse-json');
 const app = express();
 const PORT = 8080; // default port 8080
 app.set("view engine", "ejs");
