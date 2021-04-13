@@ -11,14 +11,33 @@ const urlDatabase = {
 };
 
 app.get("/urls", (req, res) => {
-  const templateVars = { urls: urlDatabase };
+  const templateVars = { urls: urlDatabase};
   res.render("urls_index", templateVars);
 });
 
+// Sends a blank page to index
+app.get("/", (req, res) => {
+  const templateVars = { urls: urlDatabase};
+  res.render("urls_index", templateVars);
+});
+
+// deletes a data base entry for a TinyURL
+app.post(`/urls/:shortURL/delete`, (req, res) => {
+  console.log(`${res.shortURL}'s link to ${urlDatabase[res.shortURL]} has been deleted.`);
+  
+  delete urlDatabase[req.params.shortURL];
+  res.redirect("/urls");
+});
 
 // Logic for making new urls
 app.post("/urls", (req, res) => {
-  const randomString = generateRandomString();
+  let randomString = generateRandomString();
+  // if entry exists, update database
+  console.log(req.body);
+  if (urlDatabase[req.body.shortURL]) {
+    randomString = req.body.shortURL;
+  }
+
   if(req.body.longURL.startsWith('http')){
     urlDatabase[randomString] = req.body.longURL;
   } else {
@@ -26,7 +45,7 @@ app.post("/urls", (req, res) => {
   }
   
   console.log(`${randomString} now links too ${req.body.longURL}`);  // Log the POST request body to the console
-  res.send('added to database');   
+  res.redirect('urls');  
 });
 
 app.get("/u/:shortURL", (req, res) => {
