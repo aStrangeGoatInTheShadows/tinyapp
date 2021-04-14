@@ -11,11 +11,9 @@
         <a class="nav-item nav-link" href="/urls/new">Create New URL</a>
         <% if (!user) { %>
           <form class="form-inline" action="/login" method="POST">
-            <div class="form-group login">
-              <label for="usrLogin">Enter a Login:</label>
-              <input class="form-control" type="text" name="username" placeholder="username"
-                style="width: 300px; margin: 1em">
-              <button type="submit" class="btn btn-outline-dark">Login</button>
+            <div class="form-group login">        
+              <button type="submit" class="btn btn-outline-dark">User Login</button>
+              <button type="submit" class="btn btn-outline-dark">Register</button>
             </nav>
           </div>
         </form>

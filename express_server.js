@@ -29,6 +29,13 @@ const users = {
     email: "user2@example.com", 
     password: "dishwasher-funk"
   },
+
+  // userExists : function (user) {
+  //     if (this[key]) {
+  //       return true;
+  //     }
+  //     return false;
+  // },
   
   emailExists : function (email) {
     for (let key in this) {
@@ -74,8 +81,54 @@ app.post("/register", (req, res) => {
   res.redirect("/urls");
 });
 
+///////////////////////////////////////////////////// WORKING HERE ////////////////////////////////////////
 
-//////////////////////////////// WORKING HERER //////////////////////////////////
+app.post("/login", (req, res) => {
+
+  // If user doesn't exist set error cookie to say so
+  if(!users.emailExists(req.body.userEmail)){
+    res.cookie('error', `User account doesn't exist for ${req.body.userEmail}`); 
+    res.redirect("/login");
+    return;
+  }
+
+  //////////////////////////////////////// TEST PASSWORD
+
+    // If user doesn't exist set error cookie to say so
+    if(/* PASSWORD IS VALID */)){
+      res.cookie('error', `User account doesn't exist for ${req.body.userEmail}`); 
+      res.redirect("/login");
+      return;
+    }
+
+
+  users[userID] = {
+    id: userID,
+    email: req.body.userEmail,
+    password: req.body.userPassword
+  }
+  res.cookie('user_id', userID); 
+
+  return;
+})
+
+app.get("/login", (req, res) => {
+  const templateVars = { 
+    urls: urlDatabase,
+    user: users[req.cookies.user_id],
+    error: req.cookies.error,
+    errors
+  };
+
+  if(templateVars.error) {
+    console.log(`Registration Error = ${templateVars.error}`);
+  }
+  res.clearCookie('error');
+  ////// CLEAR ERROR COOKIE //////////
+
+  res.render("login", templateVars);
+});
+
 app.get("/register", (req, res) => {
   const templateVars = { 
     urls: urlDatabase,
