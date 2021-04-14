@@ -13,21 +13,54 @@ const urlDatabase = {
   "9sm5xK": "http://www.google.com"
 };
 
+const users = { 
+  "userRandomID": {
+    id: "userRandomID", 
+    email: "user@example.com", 
+    password: "purple-monkey-dinosaur"
+  },
+ "user2RandomID": {
+    id: "user2RandomID", 
+    email: "user2@example.com", 
+    password: "dishwasher-funk"
+  }
+}
+
+// processes adding a user to the data base
+app.post("/register", (req, res) => {
+  let userID = null;
+  // Do while none unique user name
+  do {
+    let escape = true;
+    userID = generateRandomString(10);
+    escape = users[userID];
+  } while (!escape) 
+
+  users[userID] = {
+    id: userID,
+    email: req.body.userEmail,
+    password: req.body.userPassword
+  }
+  res.cookie('user_id', userID); 
+
+  res.redirect("/urls");
+});
+
 app.get("/register", (req, res) => {
   const templateVars = { 
     urls: urlDatabase,
-    username: req.cookies.username
+    user: users[req.cookies.user_id]
   };
 
   res.render("register", templateVars);
 });
 
+// Sends urls_index to browser
 app.get("/urls", (req, res) => {
   const templateVars = { 
     urls: urlDatabase,
-    username: req.cookies.username
+    user: users[req.cookies.user_id]
   };
-
   res.render("urls_index", templateVars);
 });
 
@@ -35,7 +68,7 @@ app.get("/urls", (req, res) => {
 app.get("/", (req, res) => {
   const templateVars = { 
     urls: urlDatabase,
-    username: req.cookies["username"]
+    user: users[req.cookies.user_id]
   };
   
   res.render("urls_index", templateVars);
@@ -50,11 +83,9 @@ app.post(`/login`, (req, res) => {
 
 // Clears the cookie to logout the user
 app.post(`/logout`, (req, res) => {
-  res.clearCookie('username');
+  res.clearCookie('user_id');
   res.redirect("/urls");
 });
-
-
 
 // deletes a data base entry for a TinyURL
 app.post(`/urls/:shortURL/delete`, (req, res) => {
@@ -91,12 +122,18 @@ app.get("/u/:shortURL", (req, res) => {
 
 // Page for making new urls
 app.get("/urls/new", (req, res) => {
-  res.render("urls_new");
+  const templateVars = { 
+    user: users[req.cookies.user_id],
+    shortURL: req.params.shortURL, 
+    longURL: urlDatabase[req.params.shortURL]
+  };
+
+  res.render("urls_new", templateVars);
 });
 
 app.get("/urls/:shortURL", (req, res) => {
   const templateVars = { 
-    username: req.cookies["username"],
+    user: users[req.cookies.user_id],
     shortURL: req.params.shortURL, 
     longURL: urlDatabase[req.params.shortURL] 
   };
@@ -113,11 +150,12 @@ app.listen(PORT, () => {
 });
 
 // Generously donated by https://stackoverflow.com/questions/1349404/generate-random-string-characters-in-javascript
-function generateRandomString() {
+function generateRandomString(length) {
+  length = (typeof length !== 'undefined') ?  length : 6;
   let result = [];
   const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
   const charactersLength = characters.length;
-  const stringLength = 6;
+  const stringLength = length;
 
 
   for (var i = 0; i < stringLength; i++) {
