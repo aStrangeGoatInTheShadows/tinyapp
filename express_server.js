@@ -8,6 +8,11 @@ app.set("view engine", "ejs");
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(cookieParser());
 
+const errors = {
+  noPass: `The password can't be blank`,
+  noEmail: `The email can't be blank`  
+}
+
 const urlDatabase = {
   "b2xVn2": "http://www.lighthouselabs.ca",
   "9sm5xK": "http://www.google.com"
@@ -23,12 +28,35 @@ const users = {
     id: "user2RandomID", 
     email: "user2@example.com", 
     password: "dishwasher-funk"
+  },
+  
+  emailExists : function (email) {
+    for (let key in this) {
+      if (this[key].email === email) {
+        return true;
+      }
+    }
   }
 }
+
 
 // processes adding a user to the data base
 app.post("/register", (req, res) => {
   let userID = null;
+  if(req.body.userEmail.length === 0 || req.body.userPassword.length === 0) {
+    res.cookie('error', `the fields can't be blank`);
+    //res.status(400); ///???
+    res.redirect("/register");
+    return;
+  }
+
+  if(users.emailExists(req.body.userEmail)){
+    res.cookie('error', `an account is already registered with ${req.body.userEmail}`);
+    res.redirect("/register");
+    return;
+  };
+
+  //As per Gary this is unnecessary for this proj
   // Do while none unique user name
   do {
     let escape = true;
@@ -46,11 +74,21 @@ app.post("/register", (req, res) => {
   res.redirect("/urls");
 });
 
+
+//////////////////////////////// WORKING HERER //////////////////////////////////
 app.get("/register", (req, res) => {
   const templateVars = { 
     urls: urlDatabase,
-    user: users[req.cookies.user_id]
+    user: users[req.cookies.user_id],
+    error: req.cookies.error,
+    errors
   };
+
+  if(templateVars.error) {
+    console.log(`Registration Error = ${templateVars.error}`);
+  }
+  res.clearCookie('error');
+  ////// CLEAR ERROR COOKIE //////////
 
   res.render("register", templateVars);
 });

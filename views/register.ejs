@@ -8,6 +8,9 @@
 <body>
   <%- include('partials/_header') %>
   <h1>User Registration</h1>
+  <% if (error) { %>
+    <h4><%= error %> </h4>
+  <% } %>
   <form action="/register" method="POST">
     <label for="userEmail">User Email:</label><br>
     <input type="email" id="userEmail" name="userEmail" placeholder="user email address"><br>
