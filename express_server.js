@@ -10,7 +10,7 @@ app.use(cookieParser());
 
 const errors = {
   noPass: `The password can't be blank`,
-  noEmail: `The email can't be blank`  
+  noEmail: `The email can't be blank`
 }
 
 const urlDatabase = {
@@ -18,16 +18,21 @@ const urlDatabase = {
   "9sm5xK": "http://www.google.com"
 };
 
-const users = { 
+const users = {
   "userRandomID": {
-    id: "userRandomID", 
-    email: "user@example.com", 
+    id: "userRandomID",
+    email: "user@example.com",
     password: "purple-monkey-dinosaur"
   },
- "user2RandomID": {
-    id: "user2RandomID", 
-    email: "user2@example.com", 
+  "user2RandomID": {
+    id: "user2RandomID",
+    email: "user2@example.com",
     password: "dishwasher-funk"
+  },
+  "randomLoser": {
+    id: "randomLoser",
+    email: "insecurealphamale@hotmale.com",
+    password: "kittiecrusher"
   },
 
   // userExists : function (user) {
@@ -36,13 +41,21 @@ const users = {
   //     }
   //     return false;
   // },
-  
-  emailExists : function (email) {
+
+  isUsersPassword: function (id, password) {
+    if (this[id].password === password) {
+      return true;
+    }
+    return false;
+  },
+
+  emailExists: function (email) {
     for (let key in this) {
       if (this[key].email === email) {
-        return true;
+        return key;
       }
     }
+    return false;
   }
 }
 
@@ -50,14 +63,15 @@ const users = {
 // processes adding a user to the data base
 app.post("/register", (req, res) => {
   let userID = null;
-  if(req.body.userEmail.length === 0 || req.body.userPassword.length === 0) {
+
+  if (req.body.userEmail.length === 0 || req.body.userPassword.length === 0) {
     res.cookie('error', `the fields can't be blank`);
     //res.status(400); ///???
     res.redirect("/register");
     return;
   }
 
-  if(users.emailExists(req.body.userEmail)){
+  if (users.emailExists(req.body.userEmail)) {
     res.cookie('error', `an account is already registered with ${req.body.userEmail}`);
     res.redirect("/register");
     return;
@@ -69,14 +83,14 @@ app.post("/register", (req, res) => {
     let escape = true;
     userID = generateRandomString(10);
     escape = users[userID];
-  } while (!escape) 
+  } while (!escape)
 
   users[userID] = {
     id: userID,
     email: req.body.userEmail,
     password: req.body.userPassword
   }
-  res.cookie('user_id', userID); 
+  res.cookie('user_id', userID);
 
   res.redirect("/urls");
 });
@@ -84,43 +98,41 @@ app.post("/register", (req, res) => {
 ///////////////////////////////////////////////////// WORKING HERE ////////////////////////////////////////
 
 app.post("/login", (req, res) => {
+  let userID = users.emailExists(req.body.userEmail);
 
   // If user doesn't exist set error cookie to say so
-  if(!users.emailExists(req.body.userEmail)){
-    res.cookie('error', `User account doesn't exist for ${req.body.userEmail}`); 
+  if (!userID) {
+    res.cookie('error', `User account doesn't exist for ${req.body.userEmail}`);
     res.redirect("/login");
     return;
   }
 
   //////////////////////////////////////// TEST PASSWORD
 
-    // If user doesn't exist set error cookie to say so
-    if(/* PASSWORD IS VALID */)){
-      res.cookie('error', `User account doesn't exist for ${req.body.userEmail}`); 
-      res.redirect("/login");
-      return;
-    }
+  //console.log(`LOGIN PAGE : isUsersPassword ${users.isUsersPassword(userID, req.body.userPassword)}`)
 
-
-  users[userID] = {
-    id: userID,
-    email: req.body.userEmail,
-    password: req.body.userPassword
+  // If user doesn't exist set error cookie to say so
+  if (!users.isUsersPassword(userID, req.body.userPassword)) {
+    res.cookie('error', `These credentials do not match an account`);
+    res.redirect("/login");
+    return;
   }
-  res.cookie('user_id', userID); 
+  res.cookie('user_id', userID);
 
-  return;
+  res.redirect("/urls");
 })
 
 app.get("/login", (req, res) => {
-  const templateVars = { 
+  console.log(users);
+
+  const templateVars = {
     urls: urlDatabase,
     user: users[req.cookies.user_id],
     error: req.cookies.error,
     errors
   };
 
-  if(templateVars.error) {
+  if (templateVars.error) {
     console.log(`Registration Error = ${templateVars.error}`);
   }
   res.clearCookie('error');
@@ -130,14 +142,14 @@ app.get("/login", (req, res) => {
 });
 
 app.get("/register", (req, res) => {
-  const templateVars = { 
+  const templateVars = {
     urls: urlDatabase,
     user: users[req.cookies.user_id],
     error: req.cookies.error,
     errors
   };
 
-  if(templateVars.error) {
+  if (templateVars.error) {
     console.log(`Registration Error = ${templateVars.error}`);
   }
   res.clearCookie('error');
@@ -148,7 +160,7 @@ app.get("/register", (req, res) => {
 
 // Sends urls_index to browser
 app.get("/urls", (req, res) => {
-  const templateVars = { 
+  const templateVars = {
     urls: urlDatabase,
     user: users[req.cookies.user_id]
   };
@@ -157,19 +169,12 @@ app.get("/urls", (req, res) => {
 
 // Sends a blank page to index
 app.get("/", (req, res) => {
-  const templateVars = { 
+  const templateVars = {
     urls: urlDatabase,
     user: users[req.cookies.user_id]
   };
-  
+
   res.render("urls_index", templateVars);
-});
-
-//Creates a cookie to save the user
-app.post(`/login`, (req, res) => {
-  res.cookie('username', req.body.username);
-
-  res.redirect("/urls");
 });
 
 // Clears the cookie to logout the user
@@ -195,27 +200,27 @@ app.post("/urls", (req, res) => {
     randomString = req.body.shortURL;
   }
 
-  if(req.body.longURL.startsWith('http')){
+  if (req.body.longURL.startsWith('http')) {
     urlDatabase[randomString] = req.body.longURL;
   } else {
     urlDatabase[randomString] = `http://${req.body.longURL}`;
   }
-  
+
   console.log(`${randomString} now links too ${req.body.longURL}`);  // Log the POST request body to the console
-  res.redirect('urls');  
+  res.redirect('urls');
 });
 
 app.get("/u/:shortURL", (req, res) => {
   const longURL = urlDatabase[req.params.shortURL];
-  console.log (`User redirected to ${longURL}`)
+  console.log(`User redirected to ${longURL}`)
   res.redirect(longURL);
 });
 
 // Page for making new urls
 app.get("/urls/new", (req, res) => {
-  const templateVars = { 
+  const templateVars = {
     user: users[req.cookies.user_id],
-    shortURL: req.params.shortURL, 
+    shortURL: req.params.shortURL,
     longURL: urlDatabase[req.params.shortURL]
   };
 
@@ -223,10 +228,10 @@ app.get("/urls/new", (req, res) => {
 });
 
 app.get("/urls/:shortURL", (req, res) => {
-  const templateVars = { 
+  const templateVars = {
     user: users[req.cookies.user_id],
-    shortURL: req.params.shortURL, 
-    longURL: urlDatabase[req.params.shortURL] 
+    shortURL: req.params.shortURL,
+    longURL: urlDatabase[req.params.shortURL]
   };
 
   res.render("urls_show", templateVars);
@@ -242,7 +247,7 @@ app.listen(PORT, () => {
 
 // Generously donated by https://stackoverflow.com/questions/1349404/generate-random-string-characters-in-javascript
 function generateRandomString(length) {
-  length = (typeof length !== 'undefined') ?  length : 6;
+  length = (typeof length !== 'undefined') ? length : 6;
   let result = [];
   const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
   const charactersLength = characters.length;
