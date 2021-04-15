@@ -2,6 +2,7 @@ const bodyParser = require("body-parser");
 const cookieParser = require('cookie-parser');
 const cookieSession = require('cookie-session');
 const bcrypt = require('bcrypt');
+const helpers = require('./helpers');
 
 const express = require("express");
 const app = express();
@@ -9,6 +10,8 @@ const PORT = 8080; // default port 8080
 app.set("view engine", "ejs");
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(cookieParser());
+
+
 
 app.use(cookieSession({
   name: 'frankIsDank',
@@ -81,16 +84,13 @@ app.post("/register", (req, res) => {
 
   if (newEmail.length === 0 || newPassword.length === 0) {
     res.status(406).send(`The field's cannot be blank`); ///???
-    res.redirect("/register");
     return;
   }
-
-  if (users.emailExists(newEmail)) {
+  if (helpers.getUserByEmail(newEmail, users)) {
     res.status(406).send(`an account is already registered with ${newEmail}`);
-    res.redirect("/register");
     return;
   };
-
+  
   //As per Gary this is unnecessary for this proj
   // Do while none unique user name
   do {
@@ -98,27 +98,29 @@ app.post("/register", (req, res) => {
     newUserID = generateRandomString(10);
     escape = users[userID];
   } while (!escape)
-
+  
   const hashedPassword = bcrypt.hashSync(newPassword, 10);
-
+  
   users[newUserID] = {
     id: newUserID,
     email: newEmail,
     password: hashedPassword
   }
-  res.cookie('user_id', newUserID);
-
-  //console.log(users[newUserID]);
-
-  res.redirect("/urls");
+  
+  res.redirect("/login");
 });
 
 
 app.post("/login", (req, res) => {
-  let userID = users.emailExists(req.body.userEmail);
-
+  let email = req.body.userEmail;
+  let userObj = helpers.getUserByEmail(email, users);
+  let userID = null;;
+  if(userObj) {
+    userID = userObj.id;
+  }
+  
   // If user doesn't exist send error
-  if (!userID) {
+  if (!userObj) {
     res.status(401).send(`User account doesn't exist for ${req.body.userEmail}`)
     return;
   }
@@ -139,6 +141,12 @@ app.post("/login", (req, res) => {
 
 app.get("/login", (req, res) => {
 
+  // If a user doesn't exist for the given cookie info
+  if(helpers.userExists(req.session.user_id, users)){
+    res.redirect('/urls');
+    return;
+  }
+
   const templateVars = {
     urls: urlDatabase,
     user: users[req.session.user_id],
@@ -151,8 +159,7 @@ app.get("/login", (req, res) => {
 app.get("/register", (req, res) => {
   const templateVars = {
     urls: urlDatabase,
-    user: users[req.session.user_id],
-    errors
+    user: users[req.session.user_id]
   };
 
   res.render("register", templateVars);
@@ -161,30 +168,41 @@ app.get("/register", (req, res) => {
 // Sends urls_index to browser
 app.get("/urls", (req, res) => {
   const userID = req.session.user_id;
+  const user = null;
+  let userEmail = null;
 
+  if(helpers.userExists(userID, users)) {
+    console.log('user exists');
+    userEmail = users[userID].email;
+  }
 
-  // console.log(urlDatabase);
+  if(!helpers.getUserByEmail(userEmail, users)){
+    res.status(401).send('You must be logged in to see a URL List');
+    //res.redirect('/login');
+    return;
+  }
 
   const templateVars = {
     urls: urlDatabase,
     user: users[userID]
   };
 
-  console.log(`Sends urls_index to browser ${userID}`);
-//////////////////////////////////////////// WORKING HERE  ////////////////////////////////////
-  // if (!users.userExists(userID)) {
-  //   console.log(`The existing cookie doesn't match a known user and has been cleared`);
-  //   req.session = null;
-  // }
   res.render("urls_index", templateVars);
 });
 
 // Sends a blank page to index
 app.get("/", (req, res) => {
+  const userID = req.session.user_id || null;
+
   const templateVars = {
     urls: urlDatabase,
-    user: users[req.session.user_id]
+    user: users[userID]
   };
+
+  if (!userID) {
+    res.redirect('/login');
+    return;
+  }
 
   res.render("urls_index", templateVars);
 });
@@ -192,7 +210,7 @@ app.get("/", (req, res) => {
 // Clears the cookie to logout the user
 app.post(`/logout`, (req, res) => {
   req.session = null;
-  res.redirect("/urls");
+  res.redirect("/login");
 });
 
 
@@ -234,7 +252,7 @@ app.post("/urls", (req, res) => {
 
   //console.log(urlDatabase);
   console.log(`${randomString} now links too ${req.body.longURL}`);  // Log the POST request body to the console
-  res.redirect('urls');
+  res.redirect(`/urls/${randomString}`);
 });
 
 // GET for redirect of short URL
@@ -265,16 +283,32 @@ app.get("/urls/new", (req, res) => {
     res.render("urls_new", templateVars);
     return;
   }
-  res.cookie('error', 'you must be logged in to create tiny urls');
 
   res.redirect('/login');
 });
 
 app.get("/urls/:shortURL", (req, res) => {
+  const userID = req.session.user_id || null;
+
+  if(!urlDatabase[req.params.shortURL]) {
+    res.status(400).send(`That's an invalid short url`);
+    return;
+  }
+
+  if(!userID) {
+    res.status(401).send(`You must be logged in to access this page`);
+    return;
+  }
+
+  if(userID !== urlDatabase[req.params.shortURL].userID) {
+    res.status(403).send(`Your not permitted to edit other users links`);
+    return;
+  }
+  
   const templateVars = {
-    user: users[req.session.user_id],
+    user: users[userID],
     shortURL: req.params.shortURL,
-    longURL: urlDatabase[req.params.shortURL]
+    longURL: urlDatabase[req.params.shortURL].longURL
   };
 
   res.render("urls_show", templateVars);
