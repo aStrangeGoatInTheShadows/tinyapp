@@ -1,5 +1,6 @@
 const bodyParser = require("body-parser");
 const cookieParser = require('cookie-parser');
+const cookieSession = require('cookie-session');
 const bcrypt = require('bcrypt');
 
 const express = require("express");
@@ -9,10 +10,17 @@ app.set("view engine", "ejs");
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(cookieParser());
 
-const errors = {
-  noPass: `The password can't be blank`,
-  noEmail: `The email can't be blank`
-}
+app.use(cookieSession({
+  name: 'frankIsDank',
+  keys: [
+    'BABYBUMPERDINOSAUR',
+    "NRANOWAY",
+    'CODINGISAMAZING'
+  ],
+  // Cookie Options
+  maxAge: 24 * 60 * 60 * 1000 // 24 hours
+}))
+
 
 /////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////
@@ -100,30 +108,31 @@ app.post("/register", (req, res) => {
   }
   res.cookie('user_id', newUserID);
 
-console.log(users[newUserID]);
+  //console.log(users[newUserID]);
 
   res.redirect("/urls");
 });
 
+
 app.post("/login", (req, res) => {
   let userID = users.emailExists(req.body.userEmail);
 
-  // If user doesn't exist set error cookie to say so
+  // If user doesn't exist send error
   if (!userID) {
-    res.cookie('error', `User account doesn't exist for ${req.body.userEmail}`);
-    res.redirect("/login");
+    res.status(401).send(`User account doesn't exist for ${req.body.userEmail}`)
     return;
   }
-
+  
   //console.log(`LOGIN PAGE : isUsersPassword ${users.isUsersPassword(userID, req.body.userPassword)}`)
-
+  
   // If users password is invalid, throw an error
   if (!users.isUsersPassword(userID, req.body.userPassword)) {
     res.status(401).send(`These credentials do not match an account`);
     console.log('someone tried to login with a correct username and wrong password');
     return;
   }
-  res.cookie('user_id', userID);
+
+  req.session.user_id = userID;
 
   res.redirect("/urls");
 })
@@ -132,16 +141,9 @@ app.get("/login", (req, res) => {
 
   const templateVars = {
     urls: urlDatabase,
-    user: users[req.cookies.user_id],
-    error: req.cookies.error,
-    errors
+    user: users[req.session.user_id],
+    error: null,
   };
-
-  if (templateVars.error) {
-    console.log(`Registration Error = ${templateVars.error}`);
-  }
-  res.clearCookie('error');
-  ////// CLEAR ERROR COOKIE //////////
 
   res.render("login", templateVars);
 });
@@ -149,26 +151,18 @@ app.get("/login", (req, res) => {
 app.get("/register", (req, res) => {
   const templateVars = {
     urls: urlDatabase,
-    user: users[req.cookies.user_id],
-    error: req.cookies.error,
+    user: users[req.session.user_id],
     errors
   };
-
-  if (templateVars.error) {
-    console.log(`Registration Error = ${templateVars.error}`);
-  }
-  res.clearCookie('error');
-  ////// CLEAR ERROR COOKIE //////////
 
   res.render("register", templateVars);
 });
 
-
-
-
 // Sends urls_index to browser
 app.get("/urls", (req, res) => {
-  const userID = req.cookies.user_id;
+  const userID = req.session.user_id;
+
+
   // console.log(urlDatabase);
 
   const templateVars = {
@@ -176,10 +170,12 @@ app.get("/urls", (req, res) => {
     user: users[userID]
   };
 
-  if (!users.userExists(req.cookies.user_id)) {
-    console.log(`The existing cookie doesn't match a known user and has been cleared`);
-    res.clearCookie('user_id');
-  }
+  console.log(`Sends urls_index to browser ${userID}`);
+//////////////////////////////////////////// WORKING HERE  ////////////////////////////////////
+  // if (!users.userExists(userID)) {
+  //   console.log(`The existing cookie doesn't match a known user and has been cleared`);
+  //   req.session = null;
+  // }
   res.render("urls_index", templateVars);
 });
 
@@ -187,7 +183,7 @@ app.get("/urls", (req, res) => {
 app.get("/", (req, res) => {
   const templateVars = {
     urls: urlDatabase,
-    user: users[req.cookies.user_id]
+    user: users[req.session.user_id]
   };
 
   res.render("urls_index", templateVars);
@@ -195,7 +191,7 @@ app.get("/", (req, res) => {
 
 // Clears the cookie to logout the user
 app.post(`/logout`, (req, res) => {
-  res.clearCookie('user_id');
+  req.session = null;
   res.redirect("/urls");
 });
 
@@ -204,9 +200,9 @@ app.post(`/logout`, (req, res) => {
 // deletes a data base entry for a TinyURL
 app.post(`/urls/:shortURL/delete`, (req, res) => {
   const shortURL = res.shortURL;
-  const userID = req.cookies.user_id;
-  
-  if (!users.userExists(userID)) {    
+  const userID = req.session.user_id;
+
+  if (!users.userExists(userID)) {
     return
   }
   ////////////////////////////////////////Currently Outputting undefined///////////////////////////////////////////////////
@@ -226,7 +222,7 @@ app.post("/urls", (req, res) => {
   }
   const obj = {
     longURL: `${req.body.longURL}`,
-    userID: req.cookies.user_id
+    userID: req.session.user_id
   };
   //////////////////////////////// TEST TO MAKE SURE A VALID URL ////////////////////////////////
   // if (req.body.longURL.startsWith('http')) {
@@ -243,13 +239,12 @@ app.post("/urls", (req, res) => {
 
 // GET for redirect of short URL
 app.get("/u/:shortURL", (req, res) => {
-const shortURL = req.params.shortURL;
+  const shortURL = req.params.shortURL;
 
 
-  if (!urlDatabase[shortURL]) {
-    res.cookie('error', 'There is no URL for this!');
+  if (!urlDatabase[shortURL]) {    
+    res.status(404).send(`this doesn't match a url in the database`);
     //console.log('NO URL FOR REDIRECT');
-    res.redirect('/urls');
     return;
   }
 
@@ -261,7 +256,7 @@ const shortURL = req.params.shortURL;
 // Page for making new urls if a user is logged in
 app.get("/urls/new", (req, res) => {
   const templateVars = {
-    user: users[req.cookies.user_id],
+    user: users[req.session.user_id],
     shortURL: req.params.shortURL,
     longURL: urlDatabase[req.params.shortURL]
   };
@@ -277,7 +272,7 @@ app.get("/urls/new", (req, res) => {
 
 app.get("/urls/:shortURL", (req, res) => {
   const templateVars = {
-    user: users[req.cookies.user_id],
+    user: users[req.session.user_id],
     shortURL: req.params.shortURL,
     longURL: urlDatabase[req.params.shortURL]
   };
