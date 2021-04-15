@@ -14,8 +14,8 @@ const errors = {
 }
 
 const urlDatabase = {
-  "b2xVn2": "http://www.lighthouselabs.ca",
-  "9sm5xK": "http://www.google.com"
+  "b2xVn2": {longURL: "http://www.lighthouselabs.ca", userID: 'userRandomID'},
+  "9sm5xK": {longURL: "http://www.google.com", userID: 'userRandomID'},
 };
 
 const users = {
@@ -29,18 +29,13 @@ const users = {
     email: "user2@example.com",
     password: "dishwasher-funk"
   },
-  "randomLoser": {
-    id: "randomLoser",
-    email: "insecurealphamale@hotmale.com",
-    password: "kittiecrusher"
-  },
 
-  // userExists : function (user) {
-  //     if (this[key]) {
-  //       return true;
-  //     }
-  //     return false;
-  // },
+  userExists : function (user) {
+      if (this[user]) {
+        return true;
+      }
+      return false;
+  },
 
   isUsersPassword: function (id, password) {
     if (this[id].password === password) {
@@ -63,16 +58,18 @@ const users = {
 // processes adding a user to the data base
 app.post("/register", (req, res) => {
   let userID = null;
+  const newEmail = req.body.userEmail;
+  const newPassword = req.body.userPassword;
 
-  if (req.body.userEmail.length === 0 || req.body.userPassword.length === 0) {
+  if (newEmail.length === 0 || newPassword.length === 0) {
     res.cookie('error', `the fields can't be blank`);
     //res.status(400); ///???
     res.redirect("/register");
     return;
   }
 
-  if (users.emailExists(req.body.userEmail)) {
-    res.cookie('error', `an account is already registered with ${req.body.userEmail}`);
+  if (users.emailExists(newEmail)) {
+    res.cookie('error', `an account is already registered with ${newEmail}`);
     res.redirect("/register");
     return;
   };
@@ -81,21 +78,19 @@ app.post("/register", (req, res) => {
   // Do while none unique user name
   do {
     let escape = true;
-    userID = generateRandomString(10);
+    newUserID = generateRandomString(10);
     escape = users[userID];
   } while (!escape)
 
-  users[userID] = {
-    id: userID,
-    email: req.body.userEmail,
-    password: req.body.userPassword
+  users[newUserID] = {
+    id: newUserID,
+    email: newEmail,
+    password: newPassword
   }
-  res.cookie('user_id', userID);
+  res.cookie('user_id', newUserID);
 
   res.redirect("/urls");
 });
-
-///////////////////////////////////////////////////// WORKING HERE ////////////////////////////////////////
 
 app.post("/login", (req, res) => {
   let userID = users.emailExists(req.body.userEmail);
@@ -106,8 +101,6 @@ app.post("/login", (req, res) => {
     res.redirect("/login");
     return;
   }
-
-  //////////////////////////////////////// TEST PASSWORD
 
   //console.log(`LOGIN PAGE : isUsersPassword ${users.isUsersPassword(userID, req.body.userPassword)}`)
 
@@ -123,7 +116,6 @@ app.post("/login", (req, res) => {
 })
 
 app.get("/login", (req, res) => {
-  console.log(users);
 
   const templateVars = {
     urls: urlDatabase,
@@ -158,12 +150,24 @@ app.get("/register", (req, res) => {
   res.render("register", templateVars);
 });
 
+
+
+
 // Sends urls_index to browser
 app.get("/urls", (req, res) => {
-  const templateVars = {
-    urls: urlDatabase,
-    user: users[req.cookies.user_id]
-  };
+  const userID = req.cookies.user_id;
+// console.log(urlDatabase);
+
+const templateVars = {
+  urls: urlDatabase,
+  user: users[userID]
+};
+
+
+// if(!users.userExists(req.cookies.user_id)){
+//   console.log(`The existing cookie doesn't match a known user and has been cleared`);
+//   res.clearCookie('user_id');
+// }
   res.render("urls_index", templateVars);
 });
 
@@ -185,7 +189,9 @@ app.post(`/logout`, (req, res) => {
 
 // deletes a data base entry for a TinyURL
 app.post(`/urls/:shortURL/delete`, (req, res) => {
-  console.log(`${res.shortURL}'s link to ${urlDatabase[res.shortURL]} has been deleted.`);
+  const shortURL = res.shortURL;
+
+  console.log(`${shortURL}'s link to ${urlDatabase[shortURL]} has been deleted.`);
 
   delete urlDatabase[req.params.shortURL];
   res.redirect("/urls");
@@ -195,28 +201,48 @@ app.post(`/urls/:shortURL/delete`, (req, res) => {
 app.post("/urls", (req, res) => {
   let randomString = generateRandomString();
   // if entry exists, update database
-  console.log(req.body);
-  if (urlDatabase[req.body.shortURL]) {
-    randomString = req.body.shortURL;
-  }
+  // console.log(req.body);
+  // if (urlDatabase[req.body.shortURL]) {
+  //   randomString = req.body.shortURL;
+  // }
 
-  if (req.body.longURL.startsWith('http')) {
-    urlDatabase[randomString] = req.body.longURL;
-  } else {
-    urlDatabase[randomString] = `http://${req.body.longURL}`;
-  }
+  
+  const obj = {
+    longURL: `${req.body.longURL}`,
+    userID: req.cookies.user_id};
+  //////////////////////////////// TEST TO MAKE SURE A VALID URL ////////////////////////////////
+  // if (req.body.longURL.startsWith('http')) {
+  // } else {
+  //   const newLongURL = {longURL: `http://${req.body.longURL}`};
+  // }
+  urlDatabase[randomString] = obj;
+///////////////////////// This makes Urls //////////////////////
+/////////////////////////// I THINK ITS WORKKING //////////////////////
 
-  console.log(`${randomString} now links too ${req.body.longURL}`);  // Log the POST request body to the console
+
+console.log(urlDatabase);
+console.log(`${randomString} now links too ${req.body.longURL}`);  // Log the POST request body to the console
+res.redirect('urls');
+});
+
+
+/////Cannot read property 'longURL' of undefined
+////////////////////////// WORKING HERE ///////////////////////////////////////////////////////////////
+// GET for redirect of short URL
+app.get("/u/:shortURL", (req, res) => {
+  const shortURL = req.params.shortURL;
+  if(!urlDatabase[shortURL].longURL) {
+    res.cookie('error', 'There is no URL for this!');
+    console.log('NO URL FOR REDIRECT');
+    res.redirect();
+    return;
+  }
+  const longURL = urlDatabase[shortURL].longURL;  
+  console.log(`User redirected to ${longURL}`)
   res.redirect('urls');
 });
 
-app.get("/u/:shortURL", (req, res) => {
-  const longURL = urlDatabase[req.params.shortURL];
-  console.log(`User redirected to ${longURL}`)
-  res.redirect(longURL);
-});
-
-// Page for making new urls
+// Page for making new urls if a user is logged in
 app.get("/urls/new", (req, res) => {
   const templateVars = {
     user: users[req.cookies.user_id],
@@ -224,7 +250,13 @@ app.get("/urls/new", (req, res) => {
     longURL: urlDatabase[req.params.shortURL]
   };
 
-  res.render("urls_new", templateVars);
+  if(templateVars.user) {
+    res.render("urls_new", templateVars);
+    return;
+  }
+  res.cookie('error', 'you must be logged in to create tiny urls');
+
+  res.redirect('/login');
 });
 
 app.get("/urls/:shortURL", (req, res) => {

@@ -7,13 +7,14 @@
 </head>
 <body>
   <%- include('partials/_header') %>
-  <h1>User Login</h1>
+  <h1>User Login purple-monkey-dinosaur</h1>
   <% if (error) { %>
     <h4><%= error %> </h4>
   <% } %>
   <form action="/login" method="POST">
     <label for="userEmail">User Email:</label><br>
-    <input type="email" id="userEmail" name="userEmail" placeholder="user email address"><br>
+    <!-- Change form value back to a place holder -->
+    <input type="email" id="userEmail" name="userEmail" value="user@example.com"><br>
     <label for="userPassword">User Password :</label><br>
     <input type="password" id="userPassword" name="userPassword" placeholder=""><br><br>
     <input type="submit" class="btn btn-primary btn-lg" value="Login">
