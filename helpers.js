@@ -9,7 +9,7 @@ const getUserByEmail = function(email, database) {
   return null;
 };
 
-const userExists =  function (userID, database) {
+const userExists = function (userID, database) {
   if (database[userID]) {
     return true;
   }

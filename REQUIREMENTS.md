@@ -116,31 +116,31 @@ submit button that makes a POST request to /login -->
 
 <!-- //////////////////////////////////////////// WORKING HERE  //////////////////////////////////// -->
 
-if user is logged in:
-(Minor) redirects to /urls
-if user is not logged in:
+<!-- if user is logged in:
+(Minor) redirects to /urls -->
+<!-- if user is not logged in:
 returns HTML with:
 a form which contains:
 input fields for email and password
 a register button that makes a POST request to /register
-POST /login
+POST /login -->
 
-if email and password params match an existing user:
+<!-- if email and password params match an existing user:
 sets a cookie
-redirects to /urls
-if email and password params don't match an existing user:
-returns HTML with a relevant error message
+redirects to /urls -->
+<!-- if email and password params don't match an existing user:
+returns HTML with a relevant error message -->
 POST /register
 
-if email or password are empty:
-returns HTML with a relevant error message
-if email already exists:
-returns HTML with a relevant error message
-otherwise:
+<!-- if email or password are empty:
+returns HTML with a relevant error message -->
+<!-- if email already exists:
+returns HTML with a relevant error message -->
+<!-- otherwise:
 creates a new user
 encrypts the new user's password with bcrypt
 sets a cookie
-redirects to /urls
+redirects to /urls -->
 POST /logout
 
 deletes cookie

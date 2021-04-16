@@ -1,17 +1,16 @@
+const helpers = require('./helpers');
+const express = require("express");
 const bodyParser = require("body-parser");
-const cookieParser = require('cookie-parser');
 const cookieSession = require('cookie-session');
 const bcrypt = require('bcrypt');
-const helpers = require('./helpers');
+const cookieParser = require('cookie-parser');
 
-const express = require("express");
 const app = express();
 const PORT = 8080; // default port 8080
+
 app.set("view engine", "ejs");
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(cookieParser());
-
-
 
 app.use(cookieSession({
   name: 'frankIsDank',
@@ -25,20 +24,6 @@ app.use(cookieSession({
 }))
 
 
-/////////////////////////////////////////////////////////////////////////////////
-/////////////////////////////////////////////////////////////////////////////////
-// You've done zero curl test's as you did not understand the value
-// Start testing using curl 
-/////// REFERENCE ////////////////////////////////////////////
-// curl -X POST -i localhost:8080/urls/sgq3y6/delete
-// As this test shows, removing the "Edit" and "Delete" buttons from our front end does not
-// prevent someone from accessing our POST /urls/:id or POST /urls/:id/delete routes.
-
-// FROM ASSIGNMENT 
-//  Update the edit and delete endpoints such that only the owner (creator) of the URL can edit or delete
-//  the link. Use a testing utility like cURL to confirm that if a user is not logged in, they cannot edit or
-//  delete URLs.
-
 const urlDatabase = {
   "b2xVn2": { longURL: "http://www.lighthouselabs.ca", userID: 'userRandomID' },
   "9sm5xK": { longURL: "http://www.google.com", userID: 'userRandomID' },
@@ -50,7 +35,6 @@ const users = {
     email: "user@example.com",
     password: "$2b$10$M8Pon/b2UEEkhNXoL.5VW.UE6x/pLo7RnnSTyFIzLg/4t0UIUOpqG" // purple-monkey-dinosaur
   },
-
 
   userExists: function (user) {
     if (this[user]) {
@@ -78,35 +62,35 @@ const users = {
 
 // processes adding a user to the data base
 app.post("/register", (req, res) => {
-  let userID = null;
   const newEmail = req.body.userEmail;
+  let user = helpers.getUserByEmail(newEmail, users) || null;
   const newPassword = req.body.userPassword;
 
   if (newEmail.length === 0 || newPassword.length === 0) {
-    res.status(406).send(`The field's cannot be blank`); ///???
+    res.status(406).send(`The field's cannot be blank`);
     return;
   }
-  if (helpers.getUserByEmail(newEmail, users)) {
+  if (user) {
+    if (users.isUsersPassword(user.id, newPassword)) {
+      req.session.user_id = user.id;
+      res.redirect('/urls');
+      return;
+    }
+
     res.status(406).send(`an account is already registered with ${newEmail}`);
     return;
   };
-  
-  //As per Gary this is unnecessary for this proj
-  // Do while none unique user name
-  do {
-    let escape = true;
-    newUserID = generateRandomString(10);
-    escape = users[userID];
-  } while (!escape)
-  
+
+  const newUserID = generateRandomString(10);
+
   const hashedPassword = bcrypt.hashSync(newPassword, 10);
-  
+
   users[newUserID] = {
     id: newUserID,
     email: newEmail,
     password: hashedPassword
   }
-  
+
   res.redirect("/login");
 });
 
@@ -114,23 +98,17 @@ app.post("/register", (req, res) => {
 app.post("/login", (req, res) => {
   let email = req.body.userEmail;
   let userObj = helpers.getUserByEmail(email, users);
-  let userID = null;;
-  if(userObj) {
-    userID = userObj.id;
-  }
-  
+  let userID = userObj.id || null;
+
   // If user doesn't exist send error
   if (!userObj) {
     res.status(401).send(`User account doesn't exist for ${req.body.userEmail}`)
     return;
   }
-  
-  //console.log(`LOGIN PAGE : isUsersPassword ${users.isUsersPassword(userID, req.body.userPassword)}`)
-  
+
   // If users password is invalid, throw an error
   if (!users.isUsersPassword(userID, req.body.userPassword)) {
     res.status(401).send(`These credentials do not match an account`);
-    console.log('someone tried to login with a correct username and wrong password');
     return;
   }
 
@@ -140,9 +118,8 @@ app.post("/login", (req, res) => {
 })
 
 app.get("/login", (req, res) => {
-
   // If a user doesn't exist for the given cookie info
-  if(helpers.userExists(req.session.user_id, users)){
+  if (helpers.userExists(req.session.user_id, users)) {
     res.redirect('/urls');
     return;
   }
@@ -157,6 +134,12 @@ app.get("/login", (req, res) => {
 });
 
 app.get("/register", (req, res) => {
+  // If a user doesn't exist for the given cookie info
+  if (helpers.userExists(req.session.user_id, users)) {
+    res.redirect('/urls');
+    return;
+  }
+
   const templateVars = {
     urls: urlDatabase,
     user: users[req.session.user_id]
@@ -171,12 +154,11 @@ app.get("/urls", (req, res) => {
   const user = null;
   let userEmail = null;
 
-  if(helpers.userExists(userID, users)) {
-    console.log('user exists');
+  if (helpers.userExists(userID, users)) {
     userEmail = users[userID].email;
   }
 
-  if(!helpers.getUserByEmail(userEmail, users)){
+  if (!helpers.getUserByEmail(userEmail, users)) {
     res.status(401).send('You must be logged in to see a URL List');
     //res.redirect('/login');
     return;
@@ -223,8 +205,6 @@ app.post(`/urls/:shortURL/delete`, (req, res) => {
   if (!users.userExists(userID)) {
     return
   }
-  ////////////////////////////////////////Currently Outputting undefined///////////////////////////////////////////////////
-  console.log(`${shortURL}'s link to ${urlDatabase[shortURL]} has been deleted.`);
   delete urlDatabase[req.params.shortURL];
 
   res.redirect("/urls");
@@ -233,8 +213,8 @@ app.post(`/urls/:shortURL/delete`, (req, res) => {
 // Logic for making new urls
 app.post("/urls", (req, res) => {
   let randomString = generateRandomString();
+
   // if entry exists, update database
-  // console.log(req.body);
   if (urlDatabase[req.body.shortURL]) {
     randomString = req.body.shortURL;
   }
@@ -242,16 +222,9 @@ app.post("/urls", (req, res) => {
     longURL: `${req.body.longURL}`,
     userID: req.session.user_id
   };
-  //////////////////////////////// TEST TO MAKE SURE A VALID URL ////////////////////////////////
-  // if (req.body.longURL.startsWith('http')) {
-  // } else {
-  //   const newLongURL = {longURL: `http://${req.body.longURL}`};
-  // }
+
   urlDatabase[randomString] = obj;
 
-
-  //console.log(urlDatabase);
-  console.log(`${randomString} now links too ${req.body.longURL}`);  // Log the POST request body to the console
   res.redirect(`/urls/${randomString}`);
 });
 
@@ -259,15 +232,13 @@ app.post("/urls", (req, res) => {
 app.get("/u/:shortURL", (req, res) => {
   const shortURL = req.params.shortURL;
 
-
-  if (!urlDatabase[shortURL]) {    
+  // If doesn't match to a data base entry
+  if (!urlDatabase[shortURL]) {
     res.status(404).send(`this doesn't match a url in the database`);
-    //console.log('NO URL FOR REDIRECT');
     return;
   }
 
   const longURL = urlDatabase[shortURL].longURL;
-  console.log(`User redirected to ${longURL}`)
   res.redirect(longURL);
 });
 
@@ -290,21 +261,21 @@ app.get("/urls/new", (req, res) => {
 app.get("/urls/:shortURL", (req, res) => {
   const userID = req.session.user_id || null;
 
-  if(!urlDatabase[req.params.shortURL]) {
+  if (!urlDatabase[req.params.shortURL]) {
     res.status(400).send(`That's an invalid short url`);
     return;
   }
 
-  if(!userID) {
+  if (!userID) {
     res.status(401).send(`You must be logged in to access this page`);
     return;
   }
 
-  if(userID !== urlDatabase[req.params.shortURL].userID) {
+  if (userID !== urlDatabase[req.params.shortURL].userID) {
     res.status(403).send(`Your not permitted to edit other users links`);
     return;
   }
-  
+
   const templateVars = {
     user: users[userID],
     shortURL: req.params.shortURL,
@@ -329,7 +300,6 @@ function generateRandomString(length) {
   const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
   const charactersLength = characters.length;
   const stringLength = length;
-
 
   for (var i = 0; i < stringLength; i++) {
     result.push(characters.charAt(Math.floor(Math.random() * charactersLength)));
