@@ -9,7 +9,7 @@ const getUserByEmail = function(email, database) {
   return null;
 };
 
-const userExists = function (userID, database) {
+const userExists = function(userID, database) {
   if (database[userID]) {
     return true;
   }
@@ -17,12 +17,3 @@ const userExists = function (userID, database) {
 };
 
 module.exports = {getUserByEmail, userExists};
-
-// const users = {
-//   "userRandomID": {
-//     id: "userRandomID",
-//     email: "user@example.com",
-//     password: "$2b$10$M8Pon/b2UEEkhNXoL.5VW.UE6x/pLo7RnnSTyFIzLg/4t0UIUOpqG" // purple-monkey-dinosaur
-//   },
-
-//////////////////////////////////// IMPLEMENT AND EXPORT ///////////////////////////////////////////

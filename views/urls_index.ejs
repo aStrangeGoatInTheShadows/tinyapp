@@ -10,6 +10,7 @@
     integrity="sha384-GJzZqFGwb1QTTN6wy59ffF1BuGJpLSa9DkKMp0DgiMDm4iYMj70gZWKYbI706tWS" crossorigin="anonymous">
   <title>TinyApp</title>
 </head>
+
 <body>
   <%- include('partials/_header') %>
     <% if (user) { %>
@@ -26,8 +27,7 @@
           </thead>
           <tbody>
             <% for(let key in urls) { %>
-              <% if (urls[key].userID === user.id) { %>
-
+              <% if (urls[key].userID===user.id) { %>
                 <tr>
                   <td>
                     <%= key %>
@@ -47,7 +47,7 @@
                   </td>
                 </tr>
                 <% } %>
-              <% } %>
+                  <% } %>
           </tbody>
         </table>
       </main>
@@ -72,5 +72,3 @@
 </body>
 
 </html>
-
-<!-- YOUR IN THE MIDDLE OF TESTING THE CURL -->

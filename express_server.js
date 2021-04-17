@@ -21,7 +21,7 @@ app.use(cookieSession({
   ],
   // Cookie Options
   maxAge: 24 * 60 * 60 * 1000 // 24 hours
-}))
+}));
 
 
 const urlDatabase = {
@@ -36,21 +36,21 @@ const users = {
     password: "$2b$10$M8Pon/b2UEEkhNXoL.5VW.UE6x/pLo7RnnSTyFIzLg/4t0UIUOpqG" // purple-monkey-dinosaur
   },
 
-  userExists: function (user) {
+  userExists: function(user) {
     if (this[user]) {
       return true;
     }
     return false;
   },
 
-  isUsersPassword: function (id, password) {
+  isUsersPassword: function(id, password) {
     if (bcrypt.compareSync(password, this[id].password)) {
       return true;
     }
     return false;
   },
 
-  emailExists: function (email) {
+  emailExists: function(email) {
     for (let key in this) {
       if (this[key].email === email) {
         return key;
@@ -58,7 +58,7 @@ const users = {
     }
     return false;
   }
-}
+};
 
 // processes adding a user to the data base
 app.post("/register", (req, res) => {
@@ -79,7 +79,7 @@ app.post("/register", (req, res) => {
 
     res.status(406).send(`an account is already registered with ${newEmail}`);
     return;
-  };
+  }
 
   const newUserID = generateRandomString(10);
 
@@ -89,7 +89,7 @@ app.post("/register", (req, res) => {
     id: newUserID,
     email: newEmail,
     password: hashedPassword
-  }
+  };
 
   res.redirect("/login");
 });
@@ -102,7 +102,7 @@ app.post("/login", (req, res) => {
 
   // If user doesn't exist send error
   if (!userObj) {
-    res.status(401).send(`User account doesn't exist for ${req.body.userEmail}`)
+    res.status(401).send(`User account doesn't exist for ${req.body.userEmail}`);
     return;
   }
 
@@ -115,7 +115,7 @@ app.post("/login", (req, res) => {
   req.session.user_id = userID;
 
   res.redirect("/urls");
-})
+});
 
 app.get("/login", (req, res) => {
   // If a user doesn't exist for the given cookie info
@@ -151,7 +151,6 @@ app.get("/register", (req, res) => {
 // Sends urls_index to browser
 app.get("/urls", (req, res) => {
   const userID = req.session.user_id;
-  const user = null;
   let userEmail = null;
 
   if (helpers.userExists(userID, users)) {
@@ -199,11 +198,10 @@ app.post(`/logout`, (req, res) => {
 
 // deletes a data base entry for a TinyURL
 app.post(`/urls/:shortURL/delete`, (req, res) => {
-  const shortURL = res.shortURL;
   const userID = req.session.user_id;
 
   if (!users.userExists(userID)) {
-    return
+    return;
   }
   delete urlDatabase[req.params.shortURL];
 
@@ -294,15 +292,15 @@ app.listen(PORT, () => {
 });
 
 // Generously donated by https://stackoverflow.com/questions/1349404/generate-random-string-characters-in-javascript
-function generateRandomString(length) {
+const generateRandomString = function(length) {
   length = (typeof length !== 'undefined') ? length : 6;
   let result = [];
   const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
   const charactersLength = characters.length;
   const stringLength = length;
 
-  for (var i = 0; i < stringLength; i++) {
+  for (let i = 0; i < stringLength; i++) {
     result.push(characters.charAt(Math.floor(Math.random() * charactersLength)));
   }
   return result.join('');
-}
+};
